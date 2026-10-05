@@ -15,7 +15,7 @@ class EventRegistry:
     """Central registry for managing CDP event callbacks."""
 
     def __init__(self):
-        self._handlers: Dict[str, Callable[[Any, Optional[str]], None]] = {}
+        self._handlers: Dict[str, list[Callable[[Any, Optional[str]], None]]] = {}
 
     def register(
         self,
@@ -31,7 +31,7 @@ class EventRegistry:
                      Receives (event_data, session_id) as parameters.
         """
         logger.debug(f"Registering handler for {method}")
-        self._handlers[method] = callback
+        self._handlers.setdefault(method, []).append(callback)
 
     def unregister(self, method: str) -> None:
         """
@@ -60,12 +60,13 @@ class EventRegistry:
         Returns:
             True if a handler was found and called, False otherwise
         """
-        if method in self._handlers:
+        handlers = self._handlers.get(method)
+        if handlers:
             try:
-                handler = self._handlers[method]
-                result = handler(params, session_id)
-                if inspect.isawaitable(result):
-                    await result
+                for handler in list(handlers):
+                    result = handler(params, session_id)
+                    if inspect.isawaitable(result):
+                        await result
                 return True
             except Exception as e:
                 logger.error(f"Error in event handler for {method}: {e}")
