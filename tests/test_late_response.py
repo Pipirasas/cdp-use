@@ -37,10 +37,14 @@ class TestLateResponses(unittest.IsolatedAsyncioTestCase):
 
             self.assertEqual(list(client.pending_requests), [1])
 
-            with self.assertNoLogs("cdp_use.client", level="WARNING"):
+            with self.assertLogs("cdp_use.client", level="DEBUG") as logs:
                 await client.ws.inbox.put(json.dumps({"id": 1, "result": {}}))
                 await asyncio.wait_for(self._wait_until_no_pending_requests(client), timeout=1.0)
 
+            self.assertEqual(
+                logs.output,
+                ["DEBUG:cdp_use.client:Received response for cancelled request 1 - ignoring"],
+            )
             self.assertEqual(client.pending_requests, {})
         finally:
             reader.cancel()
