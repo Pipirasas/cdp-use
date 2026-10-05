@@ -76,22 +76,23 @@ class RegistryGenerator:
         content += "            session_id: Optional session ID\n"
         content += "            \n"
         content += "        Returns:\n"
-        content += (
-            "            True if a handler was found and called, False otherwise\n"
-        )
+        content += "            True if all registered handlers completed successfully.\n"
+        content += "            False if no handlers are registered or any handler fails.\n"
         content += '        """\n'
         content += "        handlers = self._handlers.get(method)\n"
-        content += "        if handlers:\n"
+        content += "        if not handlers:\n"
+        content += "            return False\n"
+        content += "\n"
+        content += "        had_error = False\n"
+        content += "        for handler in list(handlers):\n"
         content += "            try:\n"
-        content += "                for handler in list(handlers):\n"
-        content += "                    result = handler(params, session_id)\n"
-        content += "                    if inspect.isawaitable(result):\n"
-        content += "                        await result\n"
-        content += "                return True\n"
+        content += "                result = handler(params, session_id)\n"
+        content += "                if inspect.isawaitable(result):\n"
+        content += "                    await result\n"
         content += "            except Exception as e:\n"
         content += '                logger.error(f"Error in event handler for {method}: {e}")\n'
-        content += "                return False\n"
-        content += "        return False\n\n"
+        content += "                had_error = True\n"
+        content += "        return not had_error\n\n"
 
         content += "    def clear(self) -> None:\n"
         content += '        """Clear all registered handlers."""\n'

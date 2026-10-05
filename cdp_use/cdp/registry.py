@@ -58,20 +58,23 @@ class EventRegistry:
             session_id: Optional session ID
 
         Returns:
-            True if a handler was found and called, False otherwise
+            True if all registered handlers completed successfully.
+            False if no handlers are registered or any handler fails.
         """
         handlers = self._handlers.get(method)
-        if handlers:
+        if not handlers:
+            return False
+
+        had_error = False
+        for handler in list(handlers):
             try:
-                for handler in list(handlers):
-                    result = handler(params, session_id)
-                    if inspect.isawaitable(result):
-                        await result
-                return True
+                result = handler(params, session_id)
+                if inspect.isawaitable(result):
+                    await result
             except Exception as e:
                 logger.error(f"Error in event handler for {method}: {e}")
-                return False
-        return False
+                had_error = True
+        return not had_error
 
     def clear(self) -> None:
         """Clear all registered handlers."""
